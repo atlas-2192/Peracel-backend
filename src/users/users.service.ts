@@ -9,6 +9,7 @@ export class UsersService {
   constructor(private readonly prismaService: PrismaService) {}
 
   async createUser(data: CreateUserRequest) {
+    console.log(data);
     try {
       return await this.prismaService.user.create({
         data: {

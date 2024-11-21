@@ -1,13 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { User } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
-import { Response } from 'express';
 import ms from 'ms';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 
+import { User } from '@prisma/client';
 import { UsersService } from 'src/users/users.service';
 import { TokenPayload } from './token-payload.interface';
-import { JwtService } from '@nestjs/jwt';
+import { RegisterType, Role } from 'src/users/dto/create-user.request';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +18,27 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(user: User, response: Response) {
+  async googleLogin(user: User, response: Response) {
+    let currentUser = await this.usersService.getUser({
+      email: user.email,
+    });
+
+    if (!currentUser) {
+      const { id, email, firstName, lastName, role } = user;
+      currentUser = await this.usersService.createUser({
+        email,
+        firstName,
+        lastName,
+        password: id.toString(),
+        registerType: RegisterType.GOOGLE,
+        role: role as Role,
+      });
+    }
+
+    return this.login(currentUser, response);
+  }
+
+  login(user: User, response: Response) {
     const expires = new Date();
     expires.setMilliseconds(
       expires.getMilliseconds() +

@@ -12,9 +12,25 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
 model User {
-  id Int @default(autoincrement()) @id
+  id String @default(uuid()) @id
   email String @unique
-  password String
+  password String?
+  firstName String
+  lastName String
+  role Role @default(HOST)
+  registerType RegisterType @default(EMAIL)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+enum Role {
+  HOST
+  INFLUENCER
+  ADMIN
+}
+
+enum RegisterType {
+  EMAIL
+  GOOGLE
 }

@@ -20,7 +20,7 @@ export class UsersController {
   @Post()
   @UseInterceptors(NoFilesInterceptor())
   createUser(@Body() request: CreateUserRequest) {
-    console.log(request);
+    console.log('this is incoming request to controller in nestjs', request);
     return this.usersService.createUser(request);
   }
 

@@ -15,10 +15,6 @@ export class UsersService {
           ...data,
           password: await bcrypt.hash(data.password, 10),
         },
-        select: {
-          email: true,
-          id: true,
-        },
       });
     } catch (err) {
       if (err.code === 'P2002') {

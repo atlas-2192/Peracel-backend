@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -12,25 +6,100 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
 model User {
-  id String @default(uuid()) @id
-  email String @unique
-  password String?
-  firstName String
-  lastName String
-  role Role @default(HOST)
-  registerType RegisterType @default(EMAIL)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String    @id @default(uuid())
+  email         String    @unique
+  password      String?
+  name          String
+  role          UserRole
+  profileImage  String?
+  bio           String?
+  rating        Float?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  googleId      String?   @unique
+  stripeCustomerId String? @unique
+  stripeAccountId String? @unique
+  refreshToken  String?
+  isActive      Boolean   @default(true)
+
+  // Relations
+  servicesOffered PodcastService[] @relation("InfluencerServices")
+  bookingsAsHost  Booking[]        @relation("HostBookings")
+  bookingsAsInfluencer Booking[]   @relation("InfluencerBookings")
+  reviewsGiven    Review[]         @relation("ReviewsGiven")
+  reviewsReceived Review[]         @relation("ReviewsReceived")
 }
 
-enum Role {
+model PodcastService {
+  id           String    @id @default(uuid())
+  title        String
+  description  String
+  price        Float
+  meetingTypes MeetingType[]
+  category     String
+  rating       Float?
+  influencerId String
+  stripePriceId String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  influencer   User      @relation("InfluencerServices", fields: [influencerId], references: [id])
+  bookings     Booking[]
+}
+
+model Booking {
+  id           String      @id @default(uuid())
+  hostId       String
+  influencerId String
+  serviceId    String
+  status       BookingStatus
+  meetingType  MeetingType
+  meetingTime  DateTime
+  totalPrice   Float
+  stripePaymentIntentId String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  host         User           @relation("HostBookings", fields: [hostId], references: [id])
+  influencer   User           @relation("InfluencerBookings", fields: [influencerId], references: [id])
+  service      PodcastService @relation(fields: [serviceId], references: [id])
+  reviews      Review[]
+}
+
+model Review {
+  id           String    @id @default(uuid())
+  bookingId    String
+  reviewerId   String
+  receiverId   String
+  rating       Float
+  comment      String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  booking      Booking   @relation(fields: [bookingId], references: [id])
+  reviewer     User      @relation("ReviewsGiven", fields: [reviewerId], references: [id])
+  receiver     User      @relation("ReviewsReceived", fields: [receiverId], references: [id])
+}
+
+enum UserRole {
   HOST
   INFLUENCER
   ADMIN
 }
 
-enum RegisterType {
-  EMAIL
-  GOOGLE
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  COMPLETED
+  CANCELED
+}
+
+enum MeetingType {
+  IN_PERSON
+  VIDEO
 }

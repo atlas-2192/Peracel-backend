@@ -1,37 +1,23 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config/dist';
-import { LoggerModule } from 'nestjs-pino';
-import { UsersModule } from './users/users.module';
+import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { UsersModule } from './users/users.module';
+import { PodcastServicesModule } from './podcast-services/podcast-services.module';
+import { BookingsModule } from './bookings/bookings.module';
+import { PrismaModule } from './prisma/prisma.module';
+import configuration from './config/configuration';
 
 @Module({
   imports: [
-    LoggerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => {
-        const isProduction = configService.get('NODE_ENV') === 'production';
-
-        return {
-          pinoHttp: {
-            transport: isProduction
-              ? undefined
-              : {
-                  target: 'pino-pretty',
-                  options: {
-                    singleLine: true,
-                  },
-                },
-            level: isProduction ? 'info' : 'debug',
-          },
-        };
-      },
-      inject: [ConfigService],
+    ConfigModule.forRoot({
+      load: [configuration],
+      isGlobal: true,
     }),
-    ConfigModule.forRoot(),
-    UsersModule,
+    PrismaModule,
     AuthModule,
+    UsersModule,
+    PodcastServicesModule,
+    BookingsModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule {}

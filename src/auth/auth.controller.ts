@@ -1,71 +1,70 @@
 import {
   Controller,
-  Get,
   Post,
-  Query,
+  Body,
+  UseGuards,
+  Get,
   Req,
   Res,
-  UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Response } from 'express';
-import { v4 as uuidv4 } from 'uuid';
-
-import { User } from '@prisma/client';
-import { LocalAuthGuard } from './guards/local-auth.guard';
-import { CurrentUser } from './current-user.decorator';
 import { AuthService } from './auth.service';
-import { GoogleOauthGuard } from './guards/google-oauth.guard';
-import { StateManagerService } from './state-manager.service';
-import { RoleValidationPipe } from './pipes/role-validation.pipe';
-import { Role } from 'src/users/dto/create-user.request';
+import { LocalAuthGuard } from '../common/guards/local-auth.guard';
+import { Public } from '../common/decorators/public.decorator';
+import { AuthGuard } from '@nestjs/passport';
+import { Response } from 'express';
+import { ConfigService } from '@nestjs/config';
+import { UserRole } from '@prisma/client';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
-    private readonly configService: ConfigService,
-    private stateManagerService: StateManagerService,
+    private configService: ConfigService,
   ) {}
 
+  @Public()
+  @Post('signup')
+  async signup(
+    @Body() body: { email: string; password: string; name: string; role: UserRole },
+  ) {
+    return this.authService.signup(
+      body.email,
+      body.password,
+      body.name,
+      body.role,
+    );
+  }
+
+  @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
-  login(
-    @CurrentUser() user: User,
-    @Res({ passthrough: true }) response: Response,
-  ) {
-    return this.authService.login(user, response);
+  async login(@Req() req) {
+    return this.authService.login(req.user);
   }
 
-  @UseGuards(GoogleOauthGuard)
+  @Public()
   @Get('google')
-  async googleAuth(@Query('role', RoleValidationPipe) role: Role) {
-    console.log('google =>', role);
-    const state = uuidv4();
-    this.stateManagerService.setRole(state, role);
-    return { state };
+  @UseGuards(AuthGuard('google'))
+  async googleAuth() {}
+
+  @Public()
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  async googleAuthRedirect(@Req() req, @Res() res: Response) {
+    const tokens = await this.authService.handleGoogleAuth(req.user);
+    const frontendUrl = this.configService.get<string>('frontend.url');
+    
+    // Redirect to frontend with tokens
+    res.redirect(
+      `${frontendUrl}/auth/callback?access_token=${tokens.accessToken}&refresh_token=${tokens.refreshToken}`,
+    );
   }
 
-  @UseGuards(GoogleOauthGuard)
-  @Get('google/callback')
-  async googleAuthCallback(
-    @Query('state') state: string,
-    @Req() req,
-    @Res() res: Response,
-  ) {
-    try {
-      const role = this.stateManagerService.getRole(state);
-      console.log('role => ', role);
-      const { user } = req;
-      const userWithRole = {
-        ...user,
-        role,
-      };
-      await this.authService.googleLogin(userWithRole, res);
-      this.stateManagerService.clearState(state);
-      res.redirect(this.configService.getOrThrow('FRONTEND_URL') + '/login');
-    } catch (error) {
-      console.error(error);
-    }
+  @Post('refresh')
+  @UseGuards(AuthGuard('jwt-refresh'))
+  async refreshTokens(@Req() req) {
+    const userId = req.user.sub;
+    const refreshToken = req.user.refreshToken;
+    return this.authService.refreshTokens(userId, refreshToken);
   }
 }

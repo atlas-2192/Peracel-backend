@@ -1,4 +1,10 @@
-import { IsEmail, IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import {
+  IsEmail,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export enum Role {
   HOST = 'HOST',
@@ -16,15 +22,18 @@ export class CreateUserRequest {
     message: 'Register type must be either email or google',
   })
   registerType: RegisterType;
+  @IsOptional()
+  @IsString()
+  googleId: string;
   @IsNotEmpty()
   @IsEmail()
   email: string;
-  @IsNotEmpty()
+  @IsOptional()
   password: string;
   @IsNotEmpty()
   @IsString()
   firstName: string;
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   lastName: string;
   @IsNotEmpty()
